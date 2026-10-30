@@ -81,7 +81,8 @@ that users and agents may group by:
 Use `dimension: {is_time: true}` for a time dimension. A field without a `dimension` block
 is not groupable. It does not appear in `list_dimensions`. A query or view that uses it as
 a dimension fails validation. Metric expressions and filters can still reference an
-undeclared field when governance permits access.
+undeclared field when governance permits access. `list_filter_fields` lists every field a
+caller may filter on.
 
 Do not declare join keys, raw measures, or technical fields unless they are valid business
 groupings.

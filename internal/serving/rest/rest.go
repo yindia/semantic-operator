@@ -67,6 +67,19 @@ func Handler(svc *serving.Service, authn *auth.Authenticator, resolver serving.C
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"model": m.Name, "dimensions": dims})
 	})
+	mux.HandleFunc("GET /v1/models/{model}/filter-fields", func(w http.ResponseWriter, r *http.Request) {
+		m, ac, err := resolve(svc, authn, r)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		fields, err := svc.ListFilterFields(m, ac.Identity)
+		if err != nil {
+			writeErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"model": m.Name, "fields": fields})
+	})
 	mux.HandleFunc("POST /v1/models/{model}/query", func(w http.ResponseWriter, r *http.Request) {
 		handleQuery(svc, authn, resolver, w, r, true)
 	})

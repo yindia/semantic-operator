@@ -68,6 +68,18 @@ type DimensionInfo struct {
 	Synonyms    []string `json:"synonyms,omitempty"`
 }
 
+// FilterFieldInfo is a listing entry for a field that can be used in a row
+// filter. Any modeled field qualifies. IsDimension says whether it can also
+// be grouped by.
+type FilterFieldInfo struct {
+	Name        string   `json:"name"` // dataset.field
+	Description string   `json:"description,omitempty"`
+	Type        string   `json:"type,omitempty"`
+	IsTime      bool     `json:"isTime,omitempty"`
+	IsDimension bool     `json:"isDimension,omitempty"`
+	Synonyms    []string `json:"synonyms,omitempty"`
+}
+
 // ModelInfo describes one published model.
 type ModelInfo struct {
 	Name        string `json:"name"`
@@ -239,6 +251,33 @@ func (s *Service) ListDimensions(m *planner.CompiledModel, id governance.Identit
 			out = append(out, DimensionInfo{
 				Name: ref, Description: f.Description,
 				Type: f.Type, IsTime: f.IsTime, Synonyms: f.AIContext.Synonyms,
+			})
+		}
+	}
+	return out, nil
+}
+
+// ListFilterFields returns every field this identity may filter on, in model
+// order. Unlike ListDimensions it includes fields without a dimension
+// declaration, because filters accept any modeled field. Fields denied to the
+// role are left out.
+func (s *Service) ListFilterFields(m *planner.CompiledModel, id governance.Identity) ([]FilterFieldInfo, error) {
+	vis, err := governance.Visible(m.Governance, id)
+	if err != nil {
+		return nil, err
+	}
+	out := []FilterFieldInfo{}
+	for _, dsName := range m.DatasetOrder {
+		ds := m.Datasets[dsName]
+		for _, fName := range ds.FieldOrder {
+			ref := dsName + "." + fName
+			if !vis.Field(ref) {
+				continue
+			}
+			f := ds.Fields[fName]
+			out = append(out, FilterFieldInfo{
+				Name: ref, Description: f.Description, Type: f.Type,
+				IsTime: f.IsTime, IsDimension: f.IsDimension, Synonyms: f.AIContext.Synonyms,
 			})
 		}
 	}

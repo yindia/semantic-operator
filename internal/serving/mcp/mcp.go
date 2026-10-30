@@ -1,5 +1,6 @@
 // Package mcp is the agent adapter: an MCP server on stateless streamable
-// HTTP exposing list_metrics, list_dimensions, and query_metric. The LLM
+// HTTP exposing list_metrics, list_dimensions, list_filter_fields, and
+// query_metric. The LLM
 // never writes SQL; it selects certified metrics and dimensions and the
 // planner does the rest.
 package mcp
@@ -30,7 +31,7 @@ type listIn struct {
 }
 
 type filterIn struct {
-	Field  string `json:"field" jsonschema:"Modeled field reference as dataset.field. The field does not need a dimension declaration."`
+	Field  string `json:"field" jsonschema:"Modeled field reference as dataset.field from list_filter_fields. The field does not need a dimension declaration."`
 	Op     string `json:"op" jsonschema:"One of = != < <= > >= IN NOT IN LIKE BETWEEN"`
 	Value  any    `json:"value,omitempty" jsonschema:"Scalar comparison value"`
 	Values []any  `json:"values,omitempty" jsonschema:"Values for IN / NOT IN / BETWEEN"`
@@ -94,6 +95,11 @@ type listDimensionsOut struct {
 	Dimensions []serving.DimensionInfo `json:"dimensions"`
 }
 
+type listFilterFieldsOut struct {
+	Model  string                    `json:"model"`
+	Fields []serving.FilterFieldInfo `json:"fields"`
+}
+
 type listModelsOut struct {
 	Models []serving.ModelInfo `json:"models"`
 }
@@ -145,6 +151,23 @@ func NewServer(svc *serving.Service, version string, resolver serving.Credential
 			return nil, listDimensionsOut{}, err
 		}
 		return nil, listDimensionsOut{Model: m.Name, Dimensions: dims}, nil
+	})
+
+	sdk.AddTool(srv, &sdk.Tool{
+		Name: "list_filter_fields",
+		Description: "List the fields (dataset.field) that query_metric filters can use, with types " +
+			"and synonyms. This includes fields that are not dimensions. Only fields with " +
+			"isDimension true can also be used as group-by dimensions.",
+	}, func(ctx context.Context, req *sdk.CallToolRequest, in listIn) (*sdk.CallToolResult, listFilterFieldsOut, error) {
+		m, err := svc.Resolve(in.Model, serving.IdentityFrom(ctx))
+		if err != nil {
+			return nil, listFilterFieldsOut{}, err
+		}
+		fields, err := svc.ListFilterFields(m, serving.IdentityFrom(ctx))
+		if err != nil {
+			return nil, listFilterFieldsOut{}, err
+		}
+		return nil, listFilterFieldsOut{Model: m.Name, Fields: fields}, nil
 	})
 
 	sdk.AddTool(srv, &sdk.Tool{

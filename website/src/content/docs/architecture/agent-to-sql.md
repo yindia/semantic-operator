@@ -11,13 +11,14 @@ The LLM never sends SQL or a metric formula to the server.
 
 ## What the agent sends
 
-The Semantic Server exposes four MCP tools.
+The Semantic Server exposes five MCP tools.
 
 | Tool | Purpose |
 |---|---|
 | `list_models` | Lists the published models the caller may use |
 | `list_metrics` | Lists the certified metrics the caller may query |
 | `list_dimensions` | Lists explicitly declared dimensions the caller may group by |
+| `list_filter_fields` | Lists every field the caller may filter on, dimension or not |
 | `query_metric` | Runs a structured semantic request |
 
 Suppose a user asks:
@@ -29,7 +30,8 @@ several models are published, followed by `list_metrics` and `list_dimensions`. 
 return names, descriptions, and synonyms from the model. Dimensions also include their data
 types and whether they are time dimensions. A field appears in this list only when its Ossie
 field has a `dimension` declaration. Filters can reference other modeled fields when
-governance permits access.
+governance permits access. `list_filter_fields` lists them, and its `isDimension` flag marks
+the ones that can also be grouped by.
 
 The LLM uses that metadata to map the user's words to certified names. For example,
 "monthly recurring revenue" may match the metric `mrr`, and "region" may match

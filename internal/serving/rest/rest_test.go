@@ -141,3 +141,47 @@ func TestUnknownMetricFilterPropertyIsRejected(t *testing.T) {
 		t.Fatalf("expected unknown nested property error, got %v", err)
 	}
 }
+
+// GET /filter-fields lists fields that can be filtered on, including ones
+// that are not declared dimensions.
+func TestFilterFieldsRoute(t *testing.T) {
+	blob, err := json.Marshal(planner.CompiledModel{
+		Name: "retail", Version: "v1",
+		DatasetOrder: []string{"store"},
+		Datasets: map[string]*planner.CompiledDataset{
+			"store": {
+				Name: "store", FieldOrder: []string{"s_state", "employee_count"},
+				Fields: map[string]*planner.CompiledField{
+					"s_state":        {Name: "s_state", IsDimension: true},
+					"employee_count": {Name: "employee_count"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := serving.NewStore()
+	if err := store.Put("retail-compiled", blob); err != nil {
+		t.Fatal(err)
+	}
+	h := Handler(&serving.Service{Store: store}, nil, serving.StaticResolver())
+
+	r := httptest.NewRequest(http.MethodGet, "/v1/models/retail/filter-fields", nil)
+	r.Header.Set(PrincipalHeader, "test-user")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200. body: %s", w.Code, w.Body.String())
+	}
+	var body struct {
+		Model  string                    `json:"model"`
+		Fields []serving.FilterFieldInfo `json:"fields"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Model != "retail" || len(body.Fields) != 2 || body.Fields[1].Name != "store.employee_count" {
+		t.Fatalf("unexpected body: %s", w.Body.String())
+	}
+}

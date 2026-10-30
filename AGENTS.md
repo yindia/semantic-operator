@@ -101,7 +101,7 @@ leading `/* semantic-layer model=... version=... request=... */` comment for aud
   (`internal/planner/expr`); anything outside them fails at validation, never at query time.
 - A field is groupable only when its Ossie field has a `dimension` declaration. Compilation
   preserves this as `CompiledField.IsDimension`. Discovery, requests, and views enforce it.
-  Filters remain valid on modeled non-dimension fields.
+  Filters remain valid on modeled non-dimension fields, and `list_filter_fields` discovers them.
 
 **Trust model:** the CR author is trusted (field expressions are raw SQL scalars by design).
 Governance protects **query-time callers**, not against the model author. Identity is resolved
